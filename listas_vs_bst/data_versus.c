@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
-#define SIZE_MAX 10
+#define SIZE_MAX 1000
 
 
 struct list  {
@@ -98,13 +98,22 @@ void add_bin_tree_node(binaryt_t* root, int n)  {
     new_node->left = NULL;
     new_node->right = NULL;
 
+    int is_left = 0;
+    binaryt_t* previous_node;
     while (root != NULL) {
+        previous_node = root;
         if (root->val >= new_node->val) {
             root = root->left;
+            is_left = 1;
         }
-        else root = root->right;
+        else {
+            root = root->right;
+            is_left = 0;
+        }
+        
     }
-    root = new_node;
+    if (is_left) previous_node->left = new_node;
+    else previous_node->right = new_node;
 
     return;
 }
