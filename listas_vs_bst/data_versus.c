@@ -1,12 +1,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
-#define RERUNS 100
-#define SIZE_MAX 2000 //define o tamanho da pool do sorteio e das estruturas estaticamente
+#define DYN_SIZE_RUN 0 //usar reruns como tamanho (1) ou tamanho fixo (0)
+#define RERUNS 100// caso {DYN_SIZE_RUN} seja 1, dá o tamanho crescente do dataset. caso contrario, repete com {SIZE_MAX}
+#define SIZE_MAX 2000 //define o tamanho da pool do sorteio caso {DYN_SIZE_RUN} seja (0)
 
 //estruturas aqui
 struct list  {
-    int values[SIZE_MAX]; 
+    #if DYN_SIZE_RUN
+        int values[RERUNS];
+    #else
+        int values[SIZE_MAX]; 
+    #endif
 };
 typedef struct list list_t; //lista
 
@@ -19,15 +24,15 @@ typedef struct BT binaryt_t; //binary tree
 
 
 //assinaturas das funções aqui 
-void fill_list(list_t* l); //preenche a lista "aleatoriamente"
+void fill_list(list_t* l, int size); //preenche a lista "aleatoriamente"
 
 void add_bst_node(binaryt_t* root, int n); //add uma nova arvore no branch respectivo da arvore
 
-int search_list(list_t* l, int n); //busca o numero escolhido na lista (linearmente), retorna o numero de passos
+int search_list(list_t* l, int size, int n); //busca o numero escolhido na lista (linearmente), retorna o numero de passos
 
-int search_tree(binaryt_t* bst, int n); //busca o numero escolhido na arvore binaria (bst), retorna o numero de passos
+int search_tree(binaryt_t* bst, int size, int n); //busca o numero escolhido na arvore binaria (bst), retorna o numero de passos
 
-void print_list(list_t* l); 
+void print_list(list_t* l, int size); 
 
 void print_tree(binaryt_t* root, int level);
 
@@ -39,43 +44,62 @@ int main()    {
 
     printf("se os passos estiverem negativos, entao nao foi achado o valor, e os passos representam a busca completa.\n");
 
-    for (int turn = 0; turn < RERUNS; turn++) { //repete
-        //setando o numero a ser sorteado
-        int choosen_num = rand()%SIZE_MAX;
-        printf("\n----------------------\nchoosen: %d", choosen_num);
+    for (int turn = 1; turn <= RERUNS; turn++) { //repete
         
-        //inicializando a lista
+        int choosen_num;
         list_t lista;
-        fill_list(&lista); //preenchendo a lista aleatoriamente
+        #if DYN_SIZE_RUN 
+            choosen_num = rand()%turn;
+            fill_list(&lista, turn); //preenchendo a lista aleatoriamente
+        #else
+            choosen_num = rand()%SIZE_MAX;
+            fill_list(&lista, SIZE_MAX); 
+        #endif
+        //printf("\n----------------------\nchoosen: %d\n", choosen_num);
 
         //inicializando a arvore binaria
         binaryt_t bst;
         bst.val = lista.values[0];
         bst.left = NULL;
         bst.right = NULL;
-        for (int i = 1; i < SIZE_MAX; i++)  { //preenchendo ela de acordo com a regra para ser uma BST, com os mesmos valores da lista.
-            add_bst_node(&bst, lista.values[i]);
-        }
+        #if DYN_SIZE_RUN
+            for (int i = 1; i < turn; i++)  { //preenchendo ela de acordo com a regra para ser uma BST, com os mesmos valores da lista.
+                add_bst_node(&bst, lista.values[i]);
+            }
+
+            int bst_results = search_tree(&bst, turn, choosen_num);
+            int lista_results = search_list(&lista, turn, choosen_num);
+            data[turn-1][2] = turn;
+        #else
+            for (int i = 1; i < SIZE_MAX; i++)  { 
+                add_bst_node(&bst, lista.values[i]);
+            }
+
+            int bst_results = search_tree(&bst, SIZE_MAX, choosen_num);
+            int lista_results = search_list(&lista, SIZE_MAX, choosen_num);
+            data[turn-1][2] = SIZE_MAX;
+        #endif
+        data[turn-1][0] = bst_results;
+        data[turn-1][1] = lista_results;
 
         // descomentar caso queira verificar os resultados na mão
-        //print_list(&lista); 
+        //print_list(&lista, DYN_SIZE_RUN?turn:SIZE_MAX); 
         //print_tree(&bst, 1);
 
-        int bst_results = search_tree(&bst, choosen_num);
-        int lista_results = search_list(&lista, choosen_num);
-        data[turn][0] = bst_results;
-        data[turn][1] = lista_results;
-        data[turn][2] = SIZE_MAX;
-
-        printf("\nbusca na BST: %d steps\nbusca na lista: %d steps\n", bst_results, lista_results); //resultados
+        //printf("\nbusca na BST: %d steps\nbusca na lista: %d steps\n", bst_results, lista_results); //resultados
     }
 
     FILE *fp;
-    fp = fopen("./results/fixed_size_set.csv", "w+");
-    fprintf(fp, "bst,lista,st_size\n");
+    #if DYN_SIZE_RUN
+        fp = fopen("./results/dynamic_size_set.csv", "w+");
+    #else
+        fp = fopen("./results/fixed_size_set.csv", "w+");
+    #endif
+
+    fprintf(fp, "bst,lista,search_pool_size\n");
     for (int i = 0; i < RERUNS; i++)  { // resumo
         printf("turn %d - bst:%d, lista:%d\n", i+1, data[i][0], data[i][1]);
-        fprintf(fp, "%d,%d\n", data[i][0], data[i][1]);
+        fprintf(fp, "%d,%d,%d\n", data[i][0], data[i][1], data[i][2]);
     }
     fclose(fp);
 
@@ -84,17 +108,17 @@ int main()    {
 
 
 //declaração das funcs
-void fill_list(list_t* l)   {
-    for (int i = 0; i < SIZE_MAX; i++)    {
-        l->values[i] = rand()%SIZE_MAX;
+void fill_list(list_t* l, int size)   {
+    for (int i = 0; i < size; i++)    {
+        l->values[i] = rand()%size;
         //printf("%dst choosen: %d\n", i+1, rand()); //mostra os sorteados pra formar a lista
     }
 }
 
-void print_list(list_t* l)  {
+void print_list(list_t* l, int size)  {
     
     printf("lista:\n[ ");
-    for (int i = 0; i < SIZE_MAX; i++)  {
+    for (int i = 0; i < size; i++)  {
         printf("%d - ", l->values[i]);
     }
     printf("\b\b]\n");
@@ -145,16 +169,16 @@ void add_bst_node(binaryt_t* root, int n)  {
     return;
 }
 
-int search_list(list_t* l, int n)   {
+int search_list(list_t* l, int size, int n)   {
     int i = 0;
-    for (; i < SIZE_MAX; i++)  {
+    for (; i < size; i++)  {
         if (l->values[i] == n) return i+1;  //achou, retorna os passos
     }
     return -i; //não achou, retorna o negativo dos passos
 }
 
-int search_tree(binaryt_t* bst, int n)  {
-    for (int i = 0; i < SIZE_MAX; i++)    {
+int search_tree(binaryt_t* bst, int size, int n)  {
+    for (int i = 0; i < size; i++)    {
         if (bst == NULL) return -(i+1); //esgotou a busca sem achar
         else if (bst->val == n) return i+1; //achou aqui
         else if (n > bst->val) bst = bst->right; //num é maior, vai pra direita
