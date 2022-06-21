@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <time.h>
 #define RERUNS 100
-#define SIZE_MAX 2000 //define o tamanho da pool do sorteio e das estruturas
+#define SIZE_MAX 2000 //define o tamanho da pool do sorteio e das estruturas estaticamente
 
 //estruturas aqui
 struct list  {
@@ -34,7 +34,7 @@ void print_tree(binaryt_t* root, int level);
 //main
 int main()    {
 
-    int data[RERUNS][2]; //guarda a simulação
+    int data[RERUNS][3]; //guarda a simulação
     srand(time(NULL)); //seed pra gerar os nums aleatorios
 
     printf("se os passos estiverem negativos, entao nao foi achado o valor, e os passos representam a busca completa.\n");
@@ -65,13 +65,14 @@ int main()    {
         int lista_results = search_list(&lista, choosen_num);
         data[turn][0] = bst_results;
         data[turn][1] = lista_results;
+        data[turn][2] = SIZE_MAX;
 
         printf("\nbusca na BST: %d steps\nbusca na lista: %d steps\n", bst_results, lista_results); //resultados
     }
 
     FILE *fp;
-    fp = fopen("./results/test.csv", "w+");
-    fprintf(fp, "bst,lista\n");
+    fp = fopen("./results/fixed_size_set.csv", "w+");
+    fprintf(fp, "bst,lista,st_size\n");
     for (int i = 0; i < RERUNS; i++)  { // resumo
         printf("turn %d - bst:%d, lista:%d\n", i+1, data[i][0], data[i][1]);
         fprintf(fp, "%d,%d\n", data[i][0], data[i][1]);
